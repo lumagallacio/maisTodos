@@ -1,94 +1,107 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, FlatList, Text, StatusBar, View } from 'react-native';
-import api from '../services/api';
-import {
-  Container,
-  HeaderLight,
-  Header,
-  HeaderBalance,
-  BalanceColumn,
-  BalanceContainer,
-  TextBalanceValue,
-  Row,
-  TextGreen,
-  BalanceText,
-  OptionsTransactions,
-} from './styles';
-import Icon from 'react-native-vector-icons/Feather';
+import { StatusBar } from 'react-native';
+import Swiper from 'react-native-swiper'; // biblioteca pro swiper do saldo
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'; // biblioteca pro swiper entre as tabs das transacoes
+import { NavigationContainer } from '@react-navigation/native';
+
+import api from '../services/api'; // api pras requisicoes
+
+// Componentes
+import Header from '../components/Header/Header';
+import Balance from '../components/Balance/Balance';
+import TransactionList from '../components/TransactionList/TransactionList';
+
+// Componentes
+import { Container, WrapperBalance, WrapperSwiper } from './styles';
 
 export default function App() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
-  const [isVisiblebalance, setIsVisiblebalance] = useState(false);
+
+  const Tab = createMaterialTopTabNavigator();
 
   useEffect(() => {
-    api.get('balance').then((response) => {
-      const { balance } = response.data;
-      //   console.log(balance);
-      setBalance(balance);
-    });
-    api.get('transactions').then((response) => {
-      //   console.log(response.data);
-      setTransactions(response.data);
-    });
+    async function getBalance() {
+      try {
+        await api.get('balance').then((response) => {
+          const { balance } = response.data;
+          setBalance(balance);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    async function getTransactions() {
+      try {
+        await api.get('transactions').then((response) => {
+          setTransactions(response.data);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    getBalance();
+    getTransactions();
   }, []);
 
   return (
-    <Container>
-      <StatusBar barStyle="light-content" backgroundColor="#00a885" />
-      <Header>
-        <Icon name="align-justify" size={20} color="#FFF" />
-        <HeaderLight>Carteira Digital</HeaderLight>
-        <Icon name="bell" size={20} color="#FFF" />
-      </Header>
-      <HeaderBalance>
-        <Icon name="user" size={22} color="#00a885" />
-        <Icon name="map-pin" size={22} color="#00a885" />
-      </HeaderBalance>
-      <BalanceContainer>
-        {isVisiblebalance ? (
-          <BalanceColumn>
-            <TextGreen>Saldo Disponivel</TextGreen>
-            <Row>
-              <TextBalanceValue>R$ {balance} </TextBalanceValue>
-              <Icon
-                name="eye"
-                size={25}
-                color="#00a885"
-                onPress={() => setIsVisiblebalance(false)}
+    <NavigationContainer>
+      <Container>
+        <StatusBar barStyle="light-content" backgroundColor="white" />
+        <Header title="Carteira Digital" />
+        <WrapperSwiper>
+          <Swiper
+            showsButtons={false}
+            showsPagination
+            loop={false}
+            height={200}
+          >
+            <WrapperBalance>
+              <Balance
+                value={balance}
+                text="Esse é o valor total de cashback, depósitos, pagamentos e
+            transferências recebidas."
               />
-            </Row>
-          </BalanceColumn>
-        ) : (
-          <Icon
-            name="eye-off"
-            size={80}
-            color="#00a885"
-            onPress={() => setIsVisiblebalance(true)}
+            </WrapperBalance>
+            <WrapperBalance>
+              <Balance
+                value={balance}
+                text="Esse é o valor que você ganhou comprando em parceiros de Cartão de TODOS e comprando no Ganha TODOS."
+              />
+            </WrapperBalance>
+          </Swiper>
+        </WrapperSwiper>
+
+        <Tab.Navigator
+          tabBarOptions={{
+            labelStyle: { fontSize: 12, color: '#FFF' },
+            indicatorStyle: {
+              backgroundColor: '#FFF',
+            },
+            style: {
+              backgroundColor: '#00a885',
+            },
+          }}
+        >
+          <Tab.Screen
+            name="Tudo"
+            children={() => <TransactionList transactions={transactions} />}
           />
-        )}
-        <BalanceColumn>
-          <BalanceText>
-            Esse é o valor total de cashback, depósitos, pagamentos e
-            transferências recebidas.
-          </BalanceText>
-        </BalanceColumn>
-      </BalanceContainer>
-      <OptionsTransactions>
-        <HeaderLight>Tudo</HeaderLight>
-        <HeaderLight>Entrada</HeaderLight>
-        <HeaderLight>Saída</HeaderLight>
-        <HeaderLight>Futuro</HeaderLight>
-      </OptionsTransactions>
-      {/* <SafeAreaView>
-        <FlatList
-          data={transactions}
-          // keyExtrator={transaction => transaction.id}
-          renderItem={({ item: transaction }) => (
-            <Text>{transaction.descricao}</Text>
-          )}
-        />
-      </SafeAreaView> */}
-    </Container>
+          <Tab.Screen
+            name="Entrada"
+            children={() => (
+              <TransactionList transactions={transactions} filter="C" />
+            )}
+          />
+          <Tab.Screen
+            name="Saída"
+            children={() => (
+              <TransactionList transactions={transactions} filter="D" />
+            )}
+          />
+          <Tab.Screen name="Futuro" component={Container} />
+        </Tab.Navigator>
+      </Container>
+    </NavigationContainer>
   );
 }
